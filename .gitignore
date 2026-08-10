@@ -1,0 +1,5 @@
+*.html
+*.pyc
+*.jsonl
+.vscode
+.venv
