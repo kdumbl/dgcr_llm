@@ -94,3 +94,15 @@ class ForumSpider(scrapy.Spider):
                 "content": content.strip()
                     if content else None,
             }
+
+        #follow next page of thread, pagination
+        next_page = response.css(
+        "a.pageNav-jump--next::attr(href)"
+        ).get()
+
+        if next_page:
+            yield response.follow(
+                next_page,
+                callback=self.parse_thread,
+                meta=response.meta
+            )
