@@ -1,8 +1,10 @@
 import scrapy
 
+#run this to activate spider
+#scrapy crawl spider1 -O posts.jsonl
 
 class ForumSpider(scrapy.Spider):
-    name = "forum"
+    name = "spider1"
     allowed_domains = ["dgcoursereview.com"]
 
     start_urls = [
@@ -12,7 +14,7 @@ class ForumSpider(scrapy.Spider):
         "ROBOTSTXT_OBEY": False,
         "USER_AGENT": "Mozilla/5.0 (compatible; ResearchBot/1.0)",
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
-        "DOWNLOAD_DELAY": 1,
+        "DOWNLOAD_DELAY": 5,
     }
 
     def parse(self, response):
@@ -35,7 +37,7 @@ class ForumSpider(scrapy.Spider):
                 }
             )
         """
-        thread = response.css("div.structItem--thread")[9]
+        thread = response.css("div.structItem--thread")[7]
         link = thread.css(".structItem-title a::attr(href)").get()
         
         title = thread.css(".structItem-title a::text").get()
@@ -65,10 +67,10 @@ class ForumSpider(scrapy.Spider):
             ).get()
 
             content = post.css(
-                ".bbWrapper"
-            ).xpath(
-                "string(.)"
-            ).get()
+                ".bbWrapper").get()
+            #).xpath(
+            #    "string(.)"
+            #).get()
 
             yield {
                 "thread_title": response.meta["thread_title"],
@@ -91,8 +93,9 @@ class ForumSpider(scrapy.Spider):
 
                 "timestamp":timestamp,
 
-                "content": content.strip()
-                    if content else None,
+                #"content": content.strip()
+                #    if content else None,
+                "content": content,
             }
 
         #follow next page of thread, pagination
