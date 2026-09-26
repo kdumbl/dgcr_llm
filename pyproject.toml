@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dgcr-llm"
+version = "0.1.0"
+description = "Local command-line wrapper for the DGCR scraping and RAG checkout"
+requires-python = ">=3.10"
+dependencies = [
+    "scrapy",
+    "beautifulsoup4",
+    "chromadb",
+    "sentence-transformers",
+    "ollama",
+]
+
+[project.scripts]
+dgcr_llm = "dgcr_cli:main"
+
+[tool.setuptools]
+py-modules = ["dgcr_cli"]

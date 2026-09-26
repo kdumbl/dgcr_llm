@@ -4,3 +4,6 @@
 .vscode
 .venv
 chroma_db
+*.egg-info/
+build/
+dist/
