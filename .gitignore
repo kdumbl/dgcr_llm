@@ -3,3 +3,4 @@
 *.jsonl
 .vscode
 .venv
+chroma_db

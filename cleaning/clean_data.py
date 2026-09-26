@@ -4,19 +4,19 @@ clean_data.py
 Takes raw Scrapy output (JSON Lines, one post per line) and turns it into
 clean text chunks ready to be embedded for RAG.
 
-Expected input schema per line - ADJUST THESE FIELD NAMES to match whatever
-your Scrapy Item actually yields:
+Expected input schema per line (from spider1):
 {
     "thread_title": "Winthrop Gold Course Review",
-    "thread_url": "https://www.dgcoursereview.com/forums/showthread.php?t=12345",
+    "thread_url": "https://www.dgcoursereview.com/threads/example.12345/",
+    "post_url": "https://www.dgcoursereview.com/threads/example.12345/post-67890",
+    "post_id": "67890",
     "author": "discgolfer99",
-    "post_date": "2024-03-01",
-    "post_number": 1,
-    "body_html": "<div>Raw HTML of the post body...</div>"
+    "timestamp": "2024-03-01T12:00:00-0500",
+    "content": "<div>Raw HTML of the post body...</div>"
 }
 
 Produce this input by having your spider yield one item per forum post, then
-run: scrapy crawl your_spider -o posts.jsonl
+run: scrapy crawl spider1 -O posts.jsonl
 
 Usage:
     python clean_data.py posts.jsonl cleaned_chunks.jsonl
@@ -25,6 +25,7 @@ Usage:
 import sys
 import json
 import re
+from urllib.parse import urlsplit, urlunsplit
 from bs4 import BeautifulSoup
 
 MAX_CHUNK_CHARS = 1200   # roughly 300-400 tokens - a safe chunk size for retrieval
@@ -70,27 +71,32 @@ def main(in_path, out_path):
             if not line:
                 continue
             post = json.loads(line)
-            key = post.get("thread_url", post.get("thread_title", "unknown"))
+            # Scrapy records the current page URL; group all pages of a thread.
+            url = urlsplit(post["thread_url"])
+            path = re.sub(r"/page-\d+/?$", "/", url.path)
+            key = urlunsplit((url.scheme, url.netloc, path, "", ""))
             threads.setdefault(key, []).append(post)
 
     n_chunks = 0
     with open(out_path, "w", encoding="utf-8") as out:
         for thread_url, posts in threads.items():
-            posts.sort(key=lambda p: p.get("post_number", 0))
             title = posts[0].get("thread_title", "")
 
             for post in posts:
-                body = html_to_text(post.get("body_html", ""))
+                body = html_to_text(post.get("content", ""))
                 if len(body) < 20:          # skip empty/near-empty posts
                     continue
 
                 for i, chunk in enumerate(chunk_text(body)):
                     record = {
-                        "id": f"{thread_url}::{post.get('post_number', 0)}::{i}",
+                        "id": f"{thread_url}::{post['post_id']}::{i}",
                         "thread_title": title,
                         "thread_url": thread_url,
-                        "author": post.get("author", ""),
-                        "post_date": post.get("post_date", ""),
+                        "post_id": str(post["post_id"]),
+                        "post_url": post.get("post_url") or "",
+                        "author": post.get("author") or "",
+                        # Keep the output field expected by build_index.py.
+                        "post_date": post.get("timestamp") or "",
                         # Prepend the thread title so the chunk is self-contained
                         # once it's retrieved out of context at query time.
                         "text": f"Thread: {title}\n{chunk}",
